@@ -1,4 +1,4 @@
-const detailedExplanations = {
+export const detailedExplanations = {
   "c3-001": {
     detail: "A Java compiler (`javac`) doesn't produce machine code directly — it translates your `.java` source into **bytecode**, stored in a `.class` file. Bytecode is a platform-neutral intermediate format: it's not tied to any specific CPU or OS, which is exactly what makes Java \"write once, run anywhere.\" The JVM is the piece that later turns this bytecode into something the actual machine can run.",
     follow: "If asked why not just compile straight to machine code: emphasize portability — the same .class file runs on Windows, Linux, or macOS without recompiling, because each platform has its own JVM that knows how to read that bytecode."
