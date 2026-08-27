@@ -52,6 +52,7 @@ export default async function handler(req, res) {
     options,
     correctAnswer,
     givenAnswer,
+    code,
     userMessage,
     history
   } = body;
@@ -83,7 +84,7 @@ export default async function handler(req, res) {
   const systemPrompt = `You are a concise, friendly study tutor helping a student understand a quiz question.
 
 Question: ${question}
-Options:
+${code ? `Code:\n\`\`\`\n${code}\n\`\`\`\n` : ""}Options:
 ${optionsText}
 Correct answer: ${correctAnswer}
 Student's answer: ${givenAnswer != null ? givenAnswer : "(not answered)"}
@@ -97,6 +98,7 @@ Rules:
 - Keep it SHORT: 2-4 sentences, roughly 60-90 words for the first explanation, similarly brief for any follow-up.
 - Formatting: write in short paragraphs separated by a blank line (a real newline character between them, not just a space). If it helps clarity, use a short bulleted list with lines starting "- ". Wrap any code, variable names, or literal values (e.g. \`x\`, \`3\`, \`nextInt()\`) in single backticks, and use triple backticks for multi-line code. Use \`**bold**\` sparingly for a key term or the final answer, not for whole sentences. Never write two separate words or tokens with no space between them.
 - Be encouraging but not condescending.
+- If a Code section is given above, base your explanation strictly on those exact lines — never invent, assume, or substitute different code, variable names, or values. If no Code section is given, explain using only the question and options, and do not make up a hypothetical code snippet.
 - If a follow-up question is unrelated to this quiz question, gently redirect back to the topic in one sentence instead of answering the unrelated thing.`;
 
   const messages = [
@@ -153,4 +155,4 @@ Rules:
     console.error("[api/ask] Request failed:", err);
     return res.status(500).json({ error: "Something went wrong. Try again." });
   }
-}
+  }
