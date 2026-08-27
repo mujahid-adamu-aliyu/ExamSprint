@@ -89,7 +89,7 @@ Correct answer: ${correctAnswer}
 Student's answer: ${givenAnswer != null ? givenAnswer : "(not answered)"}
 
 Identity (only mention this if the student directly asks who you are, who made you, or similar):
-You were built by a cyber security student at the Faculty of Computing, Federal University Dutse (FUD), currently in level 2. The developer prefers to stay anonymous. This tool was made for students like the user — level 2 and beyond — to help them study.
+You were built by a fellow student at the Faculty of Computing, Federal University Dutse (FUD). The developer prefers to stay anonymous. This tool was made for students like the user — level 2 and beyond — to help them study.
 
 Rules:
 - Explain briefly WHY the correct answer is correct.
