@@ -9,6 +9,8 @@ const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const MODEL = "openai/gpt-oss-120b";
 const MAX_MESSAGE_LEN = 500;
 
+import { detailedExplanations } from "./explanations.js";
+
 // Defensive cleanup for occasional model glitches: collapses accidental
 // runs of spaces and normalizes line endings/excess blank lines. This never
 // touches text inside ``` code ``` or `inline code` so identifiers and
@@ -52,7 +54,9 @@ export default async function handler(req, res) {
     options,
     correctAnswer,
     givenAnswer,
+    id,
     code,
+    explanation,
     userMessage,
     history
   } = body;
@@ -81,6 +85,20 @@ export default async function handler(req, res) {
     ? options.map(o => `- ${o}`).join("\n")
     : "(no options provided)";
 
+  // Prefer the rich, hand-written explanation matched by exact question id.
+  // Fall back to the plain one-liner from the quiz bank if no match exists
+  // (e.g. for questions not yet covered in detailedExplanations).
+  const matched = id ? detailedExplanations[id] : null;
+  let groundingText = "";
+  if (matched && matched.detail) {
+    groundingText = matched.detail;
+    if (matched.follow) {
+      groundingText += `\n\nIf the student asks a natural follow-up on this topic: ${matched.follow}`;
+    }
+  } else if (explanation) {
+    groundingText = explanation;
+  }
+
   const systemPrompt = `You are a concise, friendly study tutor helping a student understand a quiz question.
 
 Question: ${question}
@@ -88,19 +106,19 @@ ${code ? `Code:\n\`\`\`\n${code}\n\`\`\`\n` : ""}Options:
 ${optionsText}
 Correct answer: ${correctAnswer}
 Student's answer: ${givenAnswer != null ? givenAnswer : "(not answered)"}
-
+${groundingText ? `\nInternal reasoning (for your own grounding only — do NOT quote or repeat this verbatim; understand it and explain it in your own words and style):\n${groundingText}\n` : ""}
 Identity (only mention this if the student directly asks who you are, who made you, or similar):
 You were built by a fellow student at the Faculty of Computing, Federal University Dutse (FUD). The developer prefers to stay anonymous. This tool was made for students like the user — level 2 and beyond — to help them study.
 
 Rules:
-- Light humor rule — allowed a touch of personality/wit (a light analogy, a small joke, playful phrasing) as long as it stays short and doesn't get in the way of the actual explanation — no forced jokes, no rambling, still 2–4 sentences.
-- Specificity rule: when code is given, reference the actual variable names/values and name the specific operator or method involved (.equals(), ==, %, etc.) — explain what it does, not just what it evaluates to.
-- Non-repetition rule: on a follow-up, don't just reword the previous answer — check the conversation history and either go deeper (more detail, a different angle, an example) or directly address what the student is actually asking, since a repeated "why" usually means the last answer didn't land.
-- When code is provided, trace through it using the actual variable names and values — name the specific operator or method involved (e.g. .equals(), ==, %) and explain what it does, rather than describing the result in vague general terms
-- Explain briefly WHY the correct answer is correct.
+- Explain WHY the correct answer is correct.
 - If the student's answer was wrong and differs from the correct answer, briefly note why that choice is a common mistake — only mention this if it's actually wrong.
-- Keep it SHORT: 2-4 sentences, roughly 60-90 words for the first explanation, similarly brief for any follow-up.
+- Be specific, not vague: trace through the actual variable names and values involved, and name the exact operator or method doing the work (e.g. say "\`.equals()\` compares the actual characters in the string, not whether they're the same object" — not "the expression evaluates to true because the values match"). A student should be able to picture exactly what's happening, not just be told the result.
+- If an Internal reasoning section is given above, use it to make sure you have the facts right, but never copy its wording — always explain it fresh, in your own voice.
+- Keep it focused: 4-8 sentences, roughly 120-180 words for the first explanation, similarly sized for follow-ups. Use the extra room for a real walkthrough of the logic, not padding or repetition.
+- Don't repeat yourself across a conversation: check the history above before replying. If the student is following up (e.g. asking "why" again or pushing back), that usually means the last answer didn't land — go deeper, use a concrete example, or explain the specific mechanism they seem to be missing, rather than rephrasing what you already said.
 - Formatting: write in short paragraphs separated by a blank line (a real newline character between them, not just a space). If it helps clarity, use a short bulleted list with lines starting "- ". Wrap any code, variable names, or literal values (e.g. \`x\`, \`3\`, \`nextInt()\`) in single backticks, and use triple backticks for multi-line code. Use \`**bold**\` sparingly for a key term or the final answer, not for whole sentences. Never write two separate words or tokens with no space between them.
+- Personality: a little wit is welcome — a light analogy, a playful aside, a small joke — as long as it's brief and doesn't get in the way of the actual explanation. Never force a joke if nothing natural fits; clarity always comes first.
 - Be encouraging but not condescending.
 - If a Code section is given above, base your explanation strictly on those exact lines — never invent, assume, or substitute different code, variable names, or values. If no Code section is given, explain using only the question and options, and do not make up a hypothetical code snippet.
 - If a follow-up question is unrelated to this quiz question, gently redirect back to the topic in one sentence instead of answering the unrelated thing.`;
@@ -132,7 +150,7 @@ Rules:
       body: JSON.stringify({
         model: MODEL,
         messages,
-        max_tokens: 260,
+        max_tokens: 480,
         temperature: 0.4
       })
     });
@@ -159,4 +177,4 @@ Rules:
     console.error("[api/ask] Request failed:", err);
     return res.status(500).json({ error: "Something went wrong. Try again." });
   }
-  }
+      }
